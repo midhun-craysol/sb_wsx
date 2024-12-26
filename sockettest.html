@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Chat Test</title>
+    <style>
+        #messages { border: 1px solid #ddd; height: 200px; overflow-y: scroll; padding: 10px; margin-bottom: 10px; }
+        .message { margin: 5px 0; }
+        .message span { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h2>Chat Test</h2>
+    
+    <div id="messages"></div>
+    
+    <input type="text" id="username" placeholder="Your username" />
+    <input type="text" id="recipient" placeholder="Recipient's username" />
+    <input type="text" id="messageInput" placeholder="Type a message..." />
+    <button onclick="sendMessage()">Send</button>
+
+    <script>
+        const ws = new WebSocket('ws://localhost:4000/socketserver.php'); 
+        let username = ''; // Set the username after the user enters it         
+        ws.onopen = () => {
+            console.log('Connected');
+            // Register the user after connection is established
+            document.getElementById('username').addEventListener('change', function() {
+                username = this.value; 
+                ws.send(JSON.stringify({ type: 'register', username }));
+                console.log('Registered as:', username);
+            });
+        };
+
+
+        ws.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+                console.log('Received message:', message); // Log the entire message object
+
+                // Check if the username property exists
+                if (message.user) {
+                    console.log(message.user); // Should log the username
+                } else {
+                    console.warn("Username is undefined in the received message");
+                }
+                
+                console.log(message.text);
+                displayMessage(message.user, message.text);
+            } catch (error) {
+                console.error("Failed to parse message:", error);
+            }
+        };
+
+        ws.onerror = (error) => console.error('WebSocket error:', error);
+        ws.onclose = () => console.log('Connection closed');
+
+        function sendMessage() {
+            const recipient = document.getElementById('recipient').value;
+            const messageText = document.getElementById('messageInput').value;
+
+            if (!username) {
+                alert("Please enter your username first!");
+                return;
+            }
+
+            if (messageText && recipient) {
+                const messageData = {
+                    sender: username,
+                    recipient: recipient,
+                    text: messageText
+                };
+                ws.send(JSON.stringify(messageData));
+                displayMessage(username, messageText); // Display own message
+                document.getElementById('messageInput').value = ''; // Clear the input
+            }
+        }
+
+        function displayMessage(sender, text) {
+            alert('in display message');
+            const messagesContainer = document.getElementById('messages');
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.innerHTML = `<span>${sender}:</span> ${text}`;
+            messagesContainer.appendChild(messageElement);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll to latest message
+        }
+    </script>
+</body>
+</html>
